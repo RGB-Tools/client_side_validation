@@ -61,6 +61,20 @@ where
     }
 }
 
+/// Static entropy version of TryCommitVerify
+pub trait TryCommitVerifyStatic<Msg, Protocol>
+where
+    Self: Eq + Sized,
+    Protocol: CommitmentProtocol,
+{
+    /// Error type that may be reported during [`TryCommitVerify::try_commit_static`]
+    /// procedure
+    type Error: std::error::Error;
+
+    /// Static entropy version of the try_commit method
+    fn try_commit_static(msg: &Msg) -> Result<Self, Self::Error>;
+}
+
 impl<Msg> CommitVerify<Msg, PrehashedProtocol> for sha1::Hash
 where
     Msg: AsRef<[u8]>,

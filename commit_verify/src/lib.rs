@@ -45,13 +45,18 @@ pub mod merkle;
 pub mod tagged_hash;
 
 pub use commit_encode::{CommitConceal, CommitEncode, ConsensusCommit};
-pub use embed_commit::{EmbedCommitProof, EmbedCommitVerify};
+pub use embed_commit::{
+    EmbedCommitProof, EmbedCommitProofStatic, EmbedCommitVerify,
+    EmbedCommitVerifyStatic,
+};
 pub use merkle::{
     merklize, ConsensusMerkleCommit, MerkleSource, ToMerkleSource,
 };
 pub use tagged_hash::TaggedHash;
 
-pub use crate::commit_verify::{CommitVerify, TryCommitVerify};
+pub use crate::commit_verify::{
+    CommitVerify, TryCommitVerify, TryCommitVerifyStatic,
+};
 
 // TODO: Improve support of creating tagged hashes of the messages at the
 //       commitment protocol level.

@@ -47,6 +47,22 @@ where
     ) -> Result<Container, Container::VerifyError>;
 }
 
+/// Proofs produced by [`EmbedCommitVerifyStatic::embed_commit_static`] procedure.
+pub trait EmbedCommitProofStatic<Msg, Container, Protocol>
+where
+    Self: Sized + VerifyEq,
+    Container: EmbedCommitVerifyStatic<Msg, Protocol>,
+    Msg: CommitEncode,
+    Protocol: CommitmentProtocol,
+{
+    /// Restores original container before the commitment from the proof data
+    /// and a container containing embedded commitment.
+    fn restore_original_container(
+        &self,
+        commit_container: &Container,
+    ) -> Result<Container, Container::VerifyError>;
+}
+
 /// Trait for *embed-commit-verify scheme*, where some data structure (named
 /// *container*) may commit to existing *message* (producing *commitment* data
 /// structure and a *proof*) in such way that the original message can't be
@@ -179,6 +195,34 @@ where
              used"
         )
     }
+}
+
+/// Static entropy version of EmbedCommitVerify
+pub trait EmbedCommitVerifyStatic<Msg, Protocol>
+where
+    Self: Sized,
+    Msg: CommitEncode,
+    Protocol: CommitmentProtocol,
+{
+    /// The proof of the commitment produced as a result of
+    /// [`Self::embed_commit_static`] procedure. This proof is later used
+    /// for verification.
+    type Proof: EmbedCommitProofStatic<Msg, Self, Protocol>;
+
+    /// Error type that may be reported during [`Self::embed_commit_static`] procedure.
+    /// It may also be returned from [`Self::verify`] in case the proof data are
+    /// invalid and the commitment can't be re-created.
+    type CommitError: std::error::Error;
+
+    /// Error type that may be reported during [`Self::verify`] procedure.
+    /// It must be a subset of [`Self::CommitError`].
+    type VerifyError: std::error::Error + From<Self::CommitError>;
+
+    /// Static entropy version of the embed_commit method
+    fn embed_commit_static(
+        &mut self,
+        msg: &Msg,
+    ) -> Result<Self::Proof, Self::CommitError>;
 }
 
 /// Helpers for writing test functions working with embed-commit-verify scheme.

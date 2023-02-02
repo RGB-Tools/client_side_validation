@@ -56,12 +56,12 @@ use strict_encoding::{StrictDecode, StrictEncode};
 
 use crate::merkle::MerkleNode;
 use crate::tagged_hash::TaggedHash;
-#[cfg(doc)]
-use crate::TryCommitVerify;
 use crate::{
     commit_encode, CommitConceal, CommitEncode, CommitVerify, ConsensusCommit,
     PrehashedProtocol,
 };
+#[cfg(doc)]
+use crate::{TryCommitVerify, TryCommitVerifyStatic};
 
 /// Maximal depth of LNPBP-4 commitment tree.
 pub const MAX_TREE_DEPTH: u8 = 16;
@@ -288,7 +288,7 @@ mod commit {
     use rand::{thread_rng, RngCore};
 
     use super::*;
-    use crate::{PrehashedProtocol, TryCommitVerify};
+    use crate::{PrehashedProtocol, TryCommitVerify, TryCommitVerifyStatic};
 
     impl TryCommitVerify<MultiSource, PrehashedProtocol> for MerkleTree {
         type Error = Error;
@@ -299,6 +299,41 @@ mod commit {
             }
 
             let entropy = thread_rng().next_u64();
+
+            let mut tree = MerkleTree {
+                depth: source.min_depth,
+                messages: source.messages.clone(),
+                entropy,
+            };
+
+            if source.messages.len() > 2usize.pow(MAX_TREE_DEPTH as u32) {
+                return Err(Error::TooManyMessages(source.messages.len()));
+            }
+
+            let mut depth = tree.depth as usize;
+            loop {
+                if depth > MAX_TREE_DEPTH as usize {
+                    return Err(Error::CantFitInMaxSlots);
+                }
+                tree.depth = depth as u8;
+
+                if tree.ordered_map().is_some() {
+                    return Ok(tree);
+                }
+                depth += 1;
+            }
+        }
+    }
+
+    impl TryCommitVerifyStatic<MultiSource, PrehashedProtocol> for MerkleTree {
+        type Error = Error;
+
+        fn try_commit_static(source: &MultiSource) -> Result<Self, Error> {
+            if source.min_depth == 0 && source.messages.is_empty() {
+                return Err(Error::Empty);
+            }
+
+            let entropy = 1;
 
             let mut tree = MerkleTree {
                 depth: source.min_depth,
