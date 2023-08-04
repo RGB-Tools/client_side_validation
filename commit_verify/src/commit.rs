@@ -68,6 +68,23 @@ where Self: Eq + Sized
     }
 }
 
+/// Static entropy version of TryCommitVerify
+pub trait TryCommitVerifyStatic<Msg, Protocol: CommitmentProtocol>
+where Self: Eq + Sized
+{
+    /// Error type that may be reported during [`TryCommitVerifyStatic::try_commit`]
+    /// and [`TryCommitVerifyStatic::try_verify`] procedures
+    type Error: std::error::Error;
+
+    /// Static entropy vesion of [`TryCommitVerify::try_commit`]
+    fn try_commit_static(msg: &Msg) -> Result<Self, Self::Error>;
+
+    /// Static entropy vesion of [`TryCommitVerify::try_verify`]
+    fn try_verify_static(&self, msg: &Msg) -> Result<bool, Self::Error> {
+        Ok(Self::try_commit_static(msg)? == *self)
+    }
+}
+
 /// Commitment protocol which writes strict-encoded data into a hasher.
 pub struct StrictEncodedProtocol;
 

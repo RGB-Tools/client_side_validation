@@ -92,7 +92,7 @@ mod commit {
 
     use super::*;
     use crate::mpc::MultiSource;
-    use crate::{TryCommitVerify, UntaggedProtocol};
+    use crate::{TryCommitVerify, TryCommitVerifyStatic, UntaggedProtocol};
 
     /// Errors generated during multi-message commitment process by
     /// [`MerkleTree::try_commit`]
@@ -128,6 +128,55 @@ mod commit {
             }
 
             let entropy = thread_rng().next_u64();
+
+            let mut map = BTreeMap::<u32, (ProtocolId, Message)>::new();
+
+            let mut depth = source.min_depth;
+            let mut prev_width = 1u32;
+            loop {
+                let width = 2u32.pow(depth.to_u8() as u32);
+                if width as usize >= msg_count {
+                    for cofactor in 0..=(prev_width.min(COFACTOR_ATTEMPTS as u32) as u16) {
+                        map.clear();
+                        if source.messages.iter().all(|(protocol, message)| {
+                            let pos = protocol_id_pos(*protocol, cofactor, width);
+                            map.insert(pos, (*protocol, *message)).is_none()
+                        }) {
+                            return Ok(MerkleTree {
+                                depth,
+                                entropy,
+                                cofactor,
+                                messages: source.messages.clone(),
+                                map: Confined::try_from(map).expect("MultiSource type guarantees"),
+                            });
+                        }
+                    }
+                }
+
+                prev_width = width;
+                depth = depth
+                    .checked_add(1)
+                    .ok_or(Error::CantFitInMaxSlots(msg_count))?;
+            }
+        }
+    }
+
+    impl TryCommitVerifyStatic<MultiSource, UntaggedProtocol> for MerkleTree {
+        type Error = Error;
+
+        fn try_commit_static(source: &MultiSource) -> Result<Self, Error> {
+            use std::collections::BTreeMap;
+
+            let msg_count = source.messages.len();
+
+            if source.min_depth == u5::ZERO && source.messages.is_empty() {
+                return Err(Error::Empty);
+            }
+            if msg_count > 2usize.pow(u5::MAX.to_u8() as u32) {
+                return Err(Error::TooManyMessages(msg_count));
+            }
+
+            let entropy = 1;
 
             let mut map = BTreeMap::<u32, (ProtocolId, Message)>::new();
 
